@@ -104,3 +104,10 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+*.pickle
+*.jsonl
+*.docs
+*.summaries
+*.txt
+*/
