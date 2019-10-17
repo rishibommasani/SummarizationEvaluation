@@ -1,10 +1,11 @@
 import random
 import torch
 import math
-from newsroom import jsonl
-from newsroom.analyze import Fragments
-from newsroom.analyze.rouge import ROUGE_N
-from newsroom.analyze.rouge import ROUGE_L
+# from newsroom import jsonl
+import jsonlines as jsonl
+from fragments import Fragments
+# from newsroom.analyze.rouge import ROUGE_N
+# from newsroom.analyze.rouge import ROUGE_L
 import pickle
 import spacy
 import nltk
@@ -16,7 +17,7 @@ from nltk.corpus import stopwords
 from gensim.test.utils import common_corpus, common_dictionary
 from gensim.models.wrappers import LdaMallet
 path_to_mallet_binary = "Mallet/bin/mallet"
-from pytorch_transformers import BertTokenizer, BertForNextSentencePrediction
+from transformers import BertTokenizer, BertForNextSentencePrediction
 import re
 import numpy as np
 import pandas as pd
@@ -56,10 +57,10 @@ def fetch_nyt(pickled=False):
 		raw_data = list(zip(summaries, documents))
 		print("Nyt", len(raw_data))
 
-		raw_data = raw_data[:10000]
-		print(sum([len(nlp(" ".join(d))) for (s,d) in raw_data]) / len(raw_data))
-		print(sum([len(nlp(s[0])) for (s,d) in raw_data]) / len(raw_data))
-		return
+		# raw_data = raw_data[:10000]
+		# print(sum([len(nlp(" ".join(d))) for (s,d) in raw_data]) / len(raw_data))
+		# print(sum([len(nlp(s[0])) for (s,d) in raw_data]) / len(raw_data))
+		# return
 		raw_data = raw_data[:100000]
 		data = []
 		for s, d in tqdm(raw_data):
@@ -79,14 +80,14 @@ def fetch_tldr(pickled=False):
 		data = pickle.load(open(pickle_f, 'rb'))
 	else:
 		with jsonl.open("tldr-training-data.jsonl") as data_file:
-			raw_data = data_file.read()
+			raw_data = list(data_file)
 		print("Tldr", len(raw_data))
 
-		raw_data = raw_data[:10000]
-		print(sum([len(nlp(e['content'])) for e in raw_data]) / len(raw_data))
-		print(sum([len(nlp(e['summary'])) for e in raw_data]) / len(raw_data))
-		return
-		raw_data = raw_data[:100000]
+		# raw_data = raw_data[:10000]
+		# print(sum([len(nlp(e['content'])) for e in raw_data]) / len(raw_data))
+		# print(sum([len(nlp(e['summary'])) for e in raw_data]) / len(raw_data))
+		# return
+		# raw_data = raw_data[:100000]
 		
 		data = []
 		for ex in tqdm(raw_data):
@@ -113,10 +114,10 @@ def fetch_gigaword(pickled=False):
 			if len(s.split()) != 0 and len(d.split()) != 0:
 				raw_data.append((s, d))
 		print("Giga", len(raw_data))
-		raw_data = raw_data[:10000]
-		print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
-		print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
-		return
+		# raw_data = raw_data[:10000]
+		# print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
+		# print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
+		# return
 		data = []
 		for s, d in tqdm(raw_data):
 			f = Fragments(s, d)
@@ -133,13 +134,14 @@ def fetch_newsroom(pickled=False):
 		data = pickle.load(open(pickle_f, 'rb'))
 	else:
 		with jsonl.open("newsroom.jsonl") as data_file:
-			raw_data = data_file.read()
+			raw_data = list(data_file)
+			#raw_data = data_file.read()
 		print("Nws", len(raw_data))
-		raw_data = raw_data[:10000]
-		print(sum([len(Fragments(e['summary'], e['text']).text) for e in raw_data]) / len(raw_data))
-		print(sum([len(Fragments(e['summary'], e['text']).summary) for e in raw_data]) / len(raw_data))
-		return
-		raw_data = raw_data[:100000]
+		# raw_data = raw_data[:10000]
+		# print(sum([len(Fragments(e['summary'], e['text']).text) for e in raw_data]) / len(raw_data))
+		# print(sum([len(Fragments(e['summary'], e['text']).summary) for e in raw_data]) / len(raw_data))
+		# return
+		# raw_data = raw_data[:100000]
 		data = [{'summary' :  e['summary'], 'text': e['text'], 'coverage' : e['coverage'], 'density' : e['density'], 'compression' : e['compression']} for e in raw_data]
 		pickle.dump(data, open(pickle_f, 'wb'))
 	print("Fetched Newsroom Dataset with {} examples".format(len(data)))
@@ -162,9 +164,9 @@ def fetch_cnndm(pickled=False):
 			if len(s.split()) != 0 and len(d.split()) != 0:
 				raw_data.append((s, d))
 		print("CNNDM", len(raw_data))
-		print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
-		print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
-		return
+		# print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
+		# print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
+		# return
 		data = []
 		for s, d in tqdm(raw_data):
 			s = " ".join([w for w in s.split() if w not in {'<t>', '</t>'}])
@@ -308,7 +310,7 @@ def compute_red(data):
 	assert len(redL_output) == len(data)
 	return sum(red1_output) / len(red1_output), sum(red2_output) / len(red2_output), sum(redL_output) / len(redL_output)
 
-
+# zip output with data and sort 
 def compute_sc(data):
 	print("Computing Semantic Coherence")
 	tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
@@ -371,19 +373,25 @@ def compute_statistics(data, dataset):
 
 
 if __name__ == '__main__':
-	# cnndm_data = fetch_cnndm(pickled=False)
+	# cnndm_data = fetch_cnndm(pickled=True)
 	# cnndm_data = cnndm_data[:20000]
-	# newsroom_data = fetch_newsroom(pickled=False)
+	# newsroom_data = fetch_newsroom(pickled=True)
 	# newsroom_data = newsroom_data[:20000]
+
 	# tldr_data = fetch_tldr(pickled=False)
 	# tldr_data = tldr_data[:20000]
-	# gigaword_data = fetch_gigaword(pickled=False)
-	# gigaword_data = gigaword_data[:20000]
-	nyt_data = fetch_nyt(pickled=False)
+
+	gigaword_data = fetch_gigaword(pickled=True)
+	gigaword_data = gigaword_data[:20000]
+
+	# nyt_data = fetch_nyt(pickled=True)
+	
 	# nyt_data = nyt_data[:20000]
-	exit()
-	statistics = compute_statistics(nyt_data, 'nyt')
-	print(statistics)
+
+	# exit()
+	# statistics = compute_statistics(nyt_data, 'nyt')
+	# print(statistics)``
+
 	# return
 	# statistics = compute_statistics(cnndm_data, 'cnndm')
 	# print(statistics)
