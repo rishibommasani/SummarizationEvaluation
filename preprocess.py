@@ -4,8 +4,8 @@ import math
 # from newsroom import jsonl
 import jsonlines as jsonl
 from fragments import Fragments
-# from newsroom.analyze.rouge import ROUGE_N
-# from newsroom.analyze.rouge import ROUGE_L
+from newsroom.analyze.rouge import ROUGE_N
+from newsroom.analyze.rouge import ROUGE_L
 import pickle
 import spacy
 import nltk
@@ -29,11 +29,14 @@ from gensim.models import CoherenceModel
 import pyLDAvis
 import pyLDAvis.gensim
 import matplotlib.pyplot as plt
+from dataset import *
 import logging
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.ERROR)
 import warnings
 warnings.filterwarnings("ignore",category=DeprecationWarning)
 nlp = spacy.load('en', disable=['parser', 'ner'])
+from fetch_data import * 
+from converter import *
 
 def lemmatization(texts, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']): # Taken from https://www.machinelearningplus.com/nlp/topic-modeling-gensim-python/
     """https://spacy.io/api/annotation"""
@@ -45,154 +48,36 @@ def lemmatization(texts, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']): # Take
     return texts_out
 
 
-def fetch_nyt(pickled=False):
-	print("Fetching NYT Dataset")
-	raw_data_pickle = 'nyt_raw.pickle'
-	pickle_f = 'nyt.pickle'
-	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
-	else:
-		documents, summaries = pickle.load(open(raw_data_pickle, 'rb'))
-		assert len(documents) == len(summaries)
-		raw_data = list(zip(summaries, documents))
-		print("Nyt", len(raw_data))
+def load_datasets():
+	# our_datasets = {'cnndm' : fetch_cnndm, 'nyt' : fetch_nyt , 'newsroom' : fetch_newsroom, 'tldr' : fetch_tldr, 'gigaword' : fetch_gigaword}
+	# for dataset_name, fetcher in our_datasets.items():
+	# 	data = fetcher()
+	# 	our_statistics = compute_our_statistics(data, dataset_name)
+	# 	# cmu_version = us2cmu(data)
+	# 	data = []
+	# 	#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
+	# 	#cmu_version = []
+	# 	print(dataset_name, our_statistics)
 
-		# raw_data = raw_data[:10000]
-		# print(sum([len(nlp(" ".join(d))) for (s,d) in raw_data]) / len(raw_data))
-		# print(sum([len(nlp(s[0])) for (s,d) in raw_data]) / len(raw_data))
-		# return
-		raw_data = raw_data[:100000]
+	cmu_datasets = fetch_cmu({'ami' : None, 'moviescript' : None, 'peerread' : None, 'pubmed' : None, 'xsum' : None})
+	for dataset_name, cmu_version in cmu_datasets.items():
+		#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
+		data = cmu2us(cmu_version)
+		#cmu_version = []
+		our_statistics = compute_our_statistics(data, dataset_name)
 		data = []
-		for s, d in tqdm(raw_data):
-			s = s[0]
-			d = " ".join(d)
-			f = Fragments(s, d)
-			data.append({'summary' : s, 'text' : d, 'coverage' : f.coverage(), 'density' : f.density(), 'compression' : f.compression()})
-		pickle.dump(data, open(pickle_f, 'wb'))
-	print("Fetched NYT with {} examples".format(len(data)))
-	return data
+		print(dataset_name, our_statistics)
 
 
-def fetch_tldr(pickled=False):
-	print("Fetching Reddit TL;DR Dataset")
-	pickle_f = 'reddit_tldr.pickle'
-	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
-	else:
-		with jsonl.open("tldr-training-data.jsonl") as data_file:
-			raw_data = list(data_file)
-		print("Tldr", len(raw_data))
-
-		raw_data = raw_data[:10000]
-		# print(sum([len(nlp(e['content'])) for e in raw_data]) / len(raw_data))
-		# print(sum([len(nlp(e['summary'])) for e in raw_data]) / len(raw_data))
-		# return
-		# raw_data = raw_data[:100000]
-		
-		data = []
-		for ex in tqdm(raw_data):
-			s, d = ex['summary'], ex['content']
-			f = Fragments(s, d)
-			data.append({'summary' : s, 'text' : d, 'coverage' : f.coverage(), 'density' : f.density(), 'compression' : f.compression()})
-		pickle.dump(data, open(pickle_f, 'wb'))
-	print("Fetched Reddit TL;DR Dataset with {} examples".format(len(data)))
-	return data
-
-
-def fetch_gigaword(pickled=False):
-	print("Fetching Gigaword Dataset")
-	pickle_f = 'gigaword.pickle'
-	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
-	else:
-		with open("gigaword.article.txt") as document_file:
-			documents = [d for d in document_file]
-		with open("gigaword.summary.txt") as summary_file:
-			summaries = [s for s in summary_file]
-		raw_data = []
-		for s, d in zip(summaries, documents):
-			if len(s.split()) != 0 and len(d.split()) != 0:
-				raw_data.append((s, d))
-		print("Giga", len(raw_data))
-		# raw_data = raw_data[:10000]
-		# print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
-		# print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
-		# return
-		data = []
-		for s, d in tqdm(raw_data):
-			f = Fragments(s, d)
-			data.append({'summary' : s, 'text' : d, 'coverage' : f.coverage(), 'density' : f.density(), 'compression' : f.compression()})
-		pickle.dump(data, open(pickle_f, 'wb'))
-	print("Fetched Gigaword Dataset with {} examples".format(len(data)))
-	return data	
-
-
-def fetch_newsroom(pickled=False):
-	print("Fetching Newsroom Dataset")
-	pickle_f = 'newsroom.pickle'
-	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
-	else:
-		with jsonl.open("newsroom.jsonl") as data_file:
-			raw_data = list(data_file)
-			#raw_data = data_file.read()
-		print("Nws", len(raw_data))
-		# raw_data = raw_data[:10000]
-		# print(sum([len(Fragments(e['summary'], e['text']).text) for e in raw_data]) / len(raw_data))
-		# print(sum([len(Fragments(e['summary'], e['text']).summary) for e in raw_data]) / len(raw_data))
-		# return
-		# raw_data = raw_data[:100000]
-		data = [{'summary' :  e['summary'], 'text': e['text'], 'coverage' : e['coverage'], 'density' : e['density'], 'compression' : e['compression']} for e in raw_data]
-		pickle.dump(data, open(pickle_f, 'wb'))
-	print("Fetched Newsroom Dataset with {} examples".format(len(data)))
-	return data
-
-
-def fetch_cnndm(pickled=False):
-	print("Fetching CNN/DM Dataset")
-	pickle_f = 'cnndm.pickle'
-	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
-	else:
-		with open("cnndm.docs") as document_file:
-			documents = [d for d in document_file]
-		with open("cnndm.summaries") as summary_file:
-			summaries = [s for s in summary_file]
-		print("cnndm", len(documents))
-		raw_data = []
-		for s, d in zip(summaries, documents):
-			if len(s.split()) != 0 and len(d.split()) != 0:
-				raw_data.append((s, d))
-		print("CNNDM", len(raw_data))
-		# print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
-		# print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
-		# return
-		data = []
-		for s, d in tqdm(raw_data):
-			s = " ".join([w for w in s.split() if w not in {'<t>', '</t>'}])
-			f = Fragments(s, d, tokenize=False)
-			data.append({'summary' : s, 'text' : d, 'coverage' : f.coverage(), 'density' : f.density(), 'compression' : f.compression()})
-		pickle.dump(data, open(pickle_f, 'wb'))
-	print("Fetched CNN/DM Dataset with {} examples".format(len(data)))
-	return data	
-
-
-def compute_compression(data):
-	print("Computing Compression")
+def compute_word_compression(data):
+	print("Computing Word Compression")
 	return 1 - (sum([1 / ex['compression'] for ex in data]) / len(data))
 
-def add_sent_comp(data):
-	'''
-	adds sentence compression to each data entry, calculated as |D|/|S| where |D| 
-	is the number of sentences in dataset and |S| is the number of sentences 
-	in the summary
-	'''
-	for d in data:
-			d['compression_sent'] = len(sent_tokenize(d['text']))/len(sent_tokenize(d['summary']))
 
-def compute_compression_sent(data):
-	print("Computing Compression")
-	return 1 - (sum([1 / ex['compression_sent'] for ex in data]) / len(data))
+def compute_sentence_compression(data):
+	print("Computing Sentence Compression")
+	return 1 - (sum([len(sent_tokenize(ex['summary']))/len(sent_tokenize(ex['text'])) for ex in data]) / len(data))
+
 
 def compute_ts(data, dataset, pickled=False):
 	print("Computing Topic Similarity")
@@ -362,38 +247,32 @@ def compute_sc(data):
 	return sum(output) / len(output)
 
 
-def compute_statistics(data, dataset):
+def compute_our_statistics(data, dataset):
 	print("Computing statistics for:", dataset)
-	compression, topic_similarity, abs1, abs2, red1, red2, redL, semantic_coherence = [None] * 8
-	# compression = compute_compression(data)
-	# print({"CMP" : compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	topic_similarity = compute_ts(data, dataset, pickled=True)
-	print({"CMP" : compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
+	word_compression, sentence_compression, topic_similarity, abs1, abs2, red1, red2, redL, semantic_coherence = [None] * 9
+	word_compression = compute_word_compression(data)
+	sentence_compression = compute_sentence_compression(data)
+	abs1 = compute_abs1(data)
+	abs2 = compute_abs2(data, dataset)
+	red1, red2, redL = compute_red(data)
+	print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
+	semantic_coherence = compute_sc(data)
+	print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
 	print()
 	print()
 	print()
+	return {"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence}
 	
-	# return
-	# abs1 = compute_abs1(data) 
-	# print({"CMP" : compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	# abs2 = compute_abs2(data, dataset)
-	# print({"CMP" : compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	# if dataset in {'cnndm', 'newsroom'}:
-	# 	red1, red2, redL = compute_red(data)
-	# 	print({"CMP" : compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	# 	semantic_coherence = compute_sc(data)
-	# 	print({"CMP" : compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	return {"CMP" : compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence}
-
 
 if __name__ == '__main__':
+	load_datasets()
 	# cnndm_data = fetch_cnndm(pickled=True)
 	# cnndm_data = cnndm_data[:20000]
 	# newsroom_data = fetch_newsroom(pickled=True)
 	# newsroom_data = newsroom_data[:20000]
 
-	tldr_data = fetch_tldr(pickled=False)
-	tldr_data = tldr_data[:20000]
+	# tldr_data = fetch_tldr(pickled=False)
+	# tldr_data = tldr_data[:20000]
 
 	# note: can run add_sent_comp on data or just add it to when reading data
 	# example: add_sent_comp(tldr_data)
