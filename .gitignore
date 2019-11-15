@@ -110,4 +110,4 @@ venv.bak/
 *.docs
 *.summaries
 *.txt
-*/
+*.gz
