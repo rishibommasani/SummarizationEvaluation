@@ -35,13 +35,23 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=lo
 import warnings
 warnings.filterwarnings("ignore",category=DeprecationWarning)
 nlp = spacy.load('en', disable=['parser', 'ner'])
+import re
+from nltk.tokenize.treebank import TreebankWordDetokenizer as Detok
+detokenizer = Detok()
+
+def detok(tokens):
+	text = detokenizer.detokenize(tokens)
+	text = re.sub('\s*,\s*', ', ', text)
+	text = re.sub('\s*\.\s*', '. ', text)
+	text = re.sub('\s*\?\s*', '? ', text)
+	return text
 
 
 def cmu2us(data):
 	print("Converting dataset to our format")
 	output = []
 	for example in tqdm(data):
-		document = " ".join([" ".join(s) for s in example.src_sents])
+		document = "".join([detok(s) for s in example.src_sents])
 		summary = " ".join([" ".join(s) for s in example.tgt_sents])
 		f = Fragments(summary, document)
 		output.append({'summary' : summary, 'text' : document, 'coverage' : f.coverage(), 'density' : f.density(), 'compression' : f.compression()})

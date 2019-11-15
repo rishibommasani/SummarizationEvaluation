@@ -63,7 +63,7 @@ def load_datasets():
 	for dataset_name, cmu_version in cmu_datasets.items():
 		#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
 		data = cmu2us(cmu_version)
-		#cmu_version = []
+		cmu_version = []
 		our_statistics = compute_our_statistics(data, dataset_name)
 		data = []
 		print(dataset_name, our_statistics)
@@ -149,25 +149,12 @@ def compute_ts(data, dataset, pickled=False):
 					if len(top_words & top_words_document) >= t:
 						numerator += 1
 						break	
-			print("Score: {}, N: {}, p: {}, k: {}".format(numerator / denominator, N, p, k))
-
-	# numerator = 0
-	# denominator = k
-	# for i in range(k):
-	# 	top_words_tuples = lda_model_summary.show_topic(i, N)
-	# 	top_words = {w for w, _ in top_words_tuples}
-	# 	for j in range(k):
-	# 		top_words_tuples_document = lda_model_document.show_topic(j, N)
-	# 		top_words_document = {w for w, _ in top_words_tuples_document}
-	# 		if len(top_words & top_words_document) >= t:
-	# 			numerator += 1
-	# 			break			
+			print("Score: {}, N: {}, p: {}, k: {}".format(numerator / denominator, N, p, k))			
 	return numerator / denominator
 
 
 def compute_abs1(data):
 	print("Computing Abstractivity-1")
-	return [x['coverage']/len(x) for x in data]
 	return 1 - (sum([ex['coverage'] for ex in data]) / len(data))
 
 
