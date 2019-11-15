@@ -83,7 +83,7 @@ def fetch_tldr(pickled=False):
 			raw_data = list(data_file)
 		print("Tldr", len(raw_data))
 
-		# raw_data = raw_data[:10000]
+		raw_data = raw_data[:10000]
 		# print(sum([len(nlp(e['content'])) for e in raw_data]) / len(raw_data))
 		# print(sum([len(nlp(e['summary'])) for e in raw_data]) / len(raw_data))
 		# return
@@ -181,6 +181,18 @@ def compute_compression(data):
 	print("Computing Compression")
 	return 1 - (sum([1 / ex['compression'] for ex in data]) / len(data))
 
+def add_sent_comp(data):
+	'''
+	adds sentence compression to each data entry, calculated as |D|/|S| where |D| 
+	is the number of sentences in dataset and |S| is the number of sentences 
+	in the summary
+	'''
+	for d in data:
+			d['compression_sent'] = len(sent_tokenize(d['text']))/len(sent_tokenize(d['summary']))
+
+def compute_compression_sent(data):
+	print("Computing Compression")
+	return 1 - (sum([1 / ex['compression_sent'] for ex in data]) / len(data))
 
 def compute_ts(data, dataset, pickled=False):
 	print("Computing Topic Similarity")
@@ -270,6 +282,7 @@ def compute_ts(data, dataset, pickled=False):
 
 def compute_abs1(data):
 	print("Computing Abstractivity-1")
+	return [x['coverage']/len(x) for x in data]
 	return 1 - (sum([ex['coverage'] for ex in data]) / len(data))
 
 
@@ -281,6 +294,7 @@ def compute_abs2(data, dataset):
 			output.append(ex['density'] / len([w for w in ex['summary'].split()]))
 		else:
 			output.append(ex['density'] / len(spacy_tokenizer(ex['summary'])))
+	# return 1 - output/len(output)
 	return 1 - (sum(output) / len(output))
 
 
@@ -378,11 +392,14 @@ if __name__ == '__main__':
 	# newsroom_data = fetch_newsroom(pickled=True)
 	# newsroom_data = newsroom_data[:20000]
 
-	# tldr_data = fetch_tldr(pickled=False)
-	# tldr_data = tldr_data[:20000]
+	tldr_data = fetch_tldr(pickled=False)
+	tldr_data = tldr_data[:20000]
 
-	gigaword_data = fetch_gigaword(pickled=True)
-	gigaword_data = gigaword_data[:20000]
+	# note: can run add_sent_comp on data or just add it to when reading data
+	# example: add_sent_comp(tldr_data)
+
+	# gigaword_data = fetch_gigaword(pickled=True)
+	# gigaword_data = gigaword_data[:20000]
 
 	# nyt_data = fetch_nyt(pickled=True)
 	
