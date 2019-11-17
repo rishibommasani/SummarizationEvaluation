@@ -1,11 +1,12 @@
 import random
 import torch
 import math
-# from newsroom import jsonl
 import jsonlines as jsonl
 from fragments import Fragments
-from newsroom.analyze.rouge import ROUGE_N
-from newsroom.analyze.rouge import ROUGE_L
+from rouge.rouge import rouge_n_sentence_level as ROUGE_N
+from rouge.rouge import rouge_l_sentence_level as ROUGE_L
+# from newsroom.analyze.rouge import ROUGE_N
+# from newsroom.analyze.rouge import ROUGE_L
 import pickle
 import spacy
 import nltk
@@ -49,24 +50,24 @@ def lemmatization(texts, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']): # Take
 
 
 def load_datasets():
-	# our_datasets = {'cnndm' : fetch_cnndm, 'nyt' : fetch_nyt , 'newsroom' : fetch_newsroom, 'tldr' : fetch_tldr, 'gigaword' : fetch_gigaword}
-	# for dataset_name, fetcher in our_datasets.items():
-	# 	data = fetcher()
-	# 	our_statistics = compute_our_statistics(data, dataset_name)
-	# 	# cmu_version = us2cmu(data)
-	# 	data = []
-	# 	#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
-	# 	#cmu_version = []
-	# 	print(dataset_name, our_statistics)
-
-	cmu_datasets = fetch_cmu({'ami' : None, 'moviescript' : None, 'peerread' : None, 'pubmed' : None, 'xsum' : None})
-	for dataset_name, cmu_version in cmu_datasets.items():
-		#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
-		data = cmu2us(cmu_version)
-		cmu_version = []
+	our_datasets = {'cnndm' : fetch_cnndm, 'nyt' : fetch_nyt , 'newsroom' : fetch_newsroom, 'tldr' : fetch_tldr, 'gigaword' : fetch_gigaword}
+	for dataset_name, fetcher in our_datasets.items():
+		data = fetcher()
 		our_statistics = compute_our_statistics(data, dataset_name)
+		# cmu_version = us2cmu(data)
 		data = []
+		#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
+		#cmu_version = []
 		print(dataset_name, our_statistics)
+
+	# cmu_datasets = fetch_cmu({'ami' : None, 'moviescript' : None, 'peerread' : None, 'pubmed' : None, 'xsum' : None})
+	# for dataset_name, cmu_version in cmu_datasets.items():
+	# 	#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
+	# 	data = cmu2us(cmu_version)
+	# 	cmu_version = []
+	# 	our_statistics = compute_our_statistics(data, dataset_name)
+	# 	data = []
+	# 	print(dataset_name, our_statistics)
 
 
 def compute_word_compression(data):
@@ -177,7 +178,7 @@ def compute_red(data):
 		summary = ex['summary']
 		red1_scores, red2_scores, redL_scores = [], [], []
 		sentences = sent_tokenize(summary)
-		sentences = [" ".join([str(token).lower() for token in spacy_tokenizer(s)]) for s in sentences]
+		sentences = [[str(token).lower() for token in spacy_tokenizer(s)] for s in sentences]
 		if len(sentences) <= 1:
 			red1_output.append(0)
 			red2_output.append(0)
@@ -237,17 +238,17 @@ def compute_sc(data):
 def compute_our_statistics(data, dataset):
 	print("Computing statistics for:", dataset)
 	word_compression, sentence_compression, topic_similarity, abs1, abs2, red1, red2, redL, semantic_coherence = [None] * 9
-	word_compression = compute_word_compression(data)
-	sentence_compression = compute_sentence_compression(data)
-	abs1 = compute_abs1(data)
-	abs2 = compute_abs2(data, dataset)
+	# word_compression = compute_word_compression(data)
+	# sentence_compression = compute_sentence_compression(data)
+	# abs1 = compute_abs1(data)
+	# abs2 = compute_abs2(data, dataset)
 	red1, red2, redL = compute_red(data)
 	print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	semantic_coherence = compute_sc(data)
-	print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	print()
-	print()
-	print()
+	# semantic_coherence = compute_sc(data)
+	# print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
+	# print()
+	# print()
+	# print()
 	return {"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence}
 	
 
