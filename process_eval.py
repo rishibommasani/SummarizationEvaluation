@@ -80,9 +80,9 @@ def add_red(data):
             [str(token).lower() for token in spacy_tokenizer(s)] for s in sentences
         ]
         if len(sentences) <= 1:
-            red1_output.append(0)
-            red2_output.append(0)
-            redL_output.append(0)
+            ex["red1"] = 0
+            ex["red2"] = 0
+            ex["redL"] = 0
         else:
             for i in range(len(sentences)):
                 for j in range(
@@ -153,6 +153,7 @@ def add_all(data, dataset_name):
     add_abs1(data)
     add_abs2(data, dataset_name)
     add_sc(data)
+    add_sent_comp(data)
     return data
 
 
