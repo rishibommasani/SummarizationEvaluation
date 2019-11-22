@@ -147,6 +147,10 @@ def add_all(data, dataset_name):
   d['abs1']: abstractivity 1 score 
   d['abs2']: abstractivity 2 score 
   d['coherence']: semantic coherence score
+  d['coherence_sent']: semantic coherence score
+  d['red1']: redundancy 1 score
+  d['red2']: redundancy 2 score
+  d['redL']: redundancy L score
   """
     add_id(data)
     add_red(data)
