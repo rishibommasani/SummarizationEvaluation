@@ -47,23 +47,18 @@ def fetch_cmu(output):
 
 
 
-def fetch_nyt(pickled=False):
+def fetch_nyt(pickled=True, N=100000):
 	print("Fetching NYT Dataset")
 	raw_data_pickle = 'nyt_raw.pickle'
-	pickle_f = 'nyt.pickle'
+	pickle_f = '{}examples_nyt.pickle'.format(N)
 	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
+		data = pickle.load(open(pickle_f + str(N), 'rb'))
 	else:
 		documents, summaries = pickle.load(open(raw_data_pickle, 'rb'))
 		assert len(documents) == len(summaries)
 		raw_data = list(zip(summaries, documents))
 		print("Nyt", len(raw_data))
-
-		# raw_data = raw_data[:10000]
-		# print(sum([len(nlp(" ".join(d))) for (s,d) in raw_data]) / len(raw_data))
-		# print(sum([len(nlp(s[0])) for (s,d) in raw_data]) / len(raw_data))
-		# return
-		raw_data = raw_data[:100000]
+		raw_data = raw_data[ : N]
 		data = []
 		for s, d in tqdm(raw_data):
 			s = s[0]
@@ -75,21 +70,16 @@ def fetch_nyt(pickled=False):
 	return data
 
 
-def fetch_tldr(pickled=False):
+def fetch_tldr(pickled=True, N=100000):
 	print("Fetching Reddit TL;DR Dataset")
-	pickle_f = 'reddit_tldr.pickle'
+	pickle_f = '{}examples_reddit.pickle'.format(N)
 	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
+		data = pickle.load(open(pickle_f + str(N), 'rb'))
 	else:
 		with jsonl.open("tldr-training-data.jsonl") as data_file:
 			raw_data = list(data_file)
 		print("Tldr", len(raw_data))
-
-		raw_data = raw_data[:10000]
-		# print(sum([len(nlp(e['content'])) for e in raw_data]) / len(raw_data))
-		# print(sum([len(nlp(e['summary'])) for e in raw_data]) / len(raw_data))
-		# return
-		# raw_data = raw_data[:100000]
+		raw_data = raw_data[ : N]
 		
 		data = []
 		for ex in tqdm(raw_data):
@@ -101,11 +91,11 @@ def fetch_tldr(pickled=False):
 	return data
 
 
-def fetch_gigaword(pickled=False):
+def fetch_gigaword(pickled=True, N=100000):
 	print("Fetching Gigaword Dataset")
-	pickle_f = 'gigaword.pickle'
+	pickle_f = '{}examples_gigaword.pickle'.format(N)
 	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
+		data = pickle.load(open(pickle_f + str(N), 'rb'))
 	else:
 		with open("gigaword.article.txt") as document_file:
 			documents = [d for d in document_file]
@@ -116,10 +106,7 @@ def fetch_gigaword(pickled=False):
 			if len(s.split()) != 0 and len(d.split()) != 0:
 				raw_data.append((s, d))
 		print("Giga", len(raw_data))
-		# raw_data = raw_data[:10000]
-		# print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
-		# print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
-		# return
+		raw_data = raw_data[ : N]
 		data = []
 		for s, d in tqdm(raw_data):
 			f = Fragments(s, d)
@@ -129,32 +116,27 @@ def fetch_gigaword(pickled=False):
 	return data	
 
 
-def fetch_newsroom(pickled=False):
+def fetch_newsroom(pickled=True, N=100000):
 	print("Fetching Newsroom Dataset")
-	pickle_f = 'newsroom.pickle'
+	pickle_f = '{}examples_newsroom.pickle'.format(N)
 	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
+		data = pickle.load(open(pickle_f + str(N), 'rb'))
 	else:
 		with jsonl.open("newsroom.jsonl") as data_file:
 			raw_data = list(data_file)
-			#raw_data = data_file.read()
 		print("Nws", len(raw_data))
-		# raw_data = raw_data[:10000]
-		# print(sum([len(Fragments(e['summary'], e['text']).text) for e in raw_data]) / len(raw_data))
-		# print(sum([len(Fragments(e['summary'], e['text']).summary) for e in raw_data]) / len(raw_data))
-		# return
-		# raw_data = raw_data[:100000]
+		raw_data = raw_data[ : N]
 		data = [{'summary' :  e['summary'], 'text': e['text'], 'coverage' : e['coverage'], 'density' : e['density'], 'compression' : e['compression']} for e in raw_data]
 		pickle.dump(data, open(pickle_f, 'wb'))
 	print("Fetched Newsroom Dataset with {} examples".format(len(data)))
 	return data
 
 
-def fetch_cnndm(pickled=True):
+def fetch_cnndm(pickled=True, N=100000):
 	print("Fetching CNN/DM Dataset")
-	pickle_f = 'cnndm.pickle'
+	pickle_f = '{}examples_cnndm.pickle'.format(N)
 	if pickled:
-		data = pickle.load(open(pickle_f, 'rb'))
+		data = pickle.load(open(pickle_f + str(N), 'rb'))
 	else:
 		with open("cnndm.docs") as document_file:
 			documents = [d for d in document_file]
@@ -165,10 +147,7 @@ def fetch_cnndm(pickled=True):
 		for s, d in zip(summaries, documents):
 			if len(s.split()) != 0 and len(d.split()) != 0:
 				raw_data.append((s, d))
-		print("CNNDM", len(raw_data))
-		# print(sum([len(Fragments(s, d).text) for (s,d) in raw_data]) / len(raw_data))
-		# print(sum([len(Fragments(s, d).summary) for (s,d) in raw_data]) / len(raw_data))
-		# return
+		raw_data = raw_data[ : N]
 		data = []
 		for s, d in tqdm(raw_data):
 			s = " ".join([w for w in s.split() if w not in {'<t>', '</t>'}])

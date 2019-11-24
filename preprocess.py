@@ -38,36 +38,47 @@ warnings.filterwarnings("ignore",category=DeprecationWarning)
 nlp = spacy.load('en', disable=['parser', 'ner'])
 from fetch_data import * 
 from converter import *
+from topic_similarity import *
 
-def lemmatization(texts, allowed_postags=['NOUN', 'ADJ', 'VERB', 'ADV']): # Taken from https://www.machinelearningplus.com/nlp/topic-modeling-gensim-python/
-    """https://spacy.io/api/annotation"""
-    texts_out = []
-    nlp = spacy.load('en', disable=['parser', 'ner'])
-    for sent in texts:
-        doc = nlp(" ".join(sent)) 
-        texts_out.append([token.lemma_ for token in doc if token.pos_ in allowed_postags])
-    return texts_out
+
+def compute_distributional_statistics(data):
+	output = {'sum_word_length' : 0, 'sum_sent_length' : 0, 'doc_word_length' : 0, 'doc_sent_length' : 0}
+	for example in tqdm(data):
+		s = example['summary']
+		d = example['text']
+		output['sum_sent_length'] += len(sent_tokenize(s))
+		output['doc_sent_length'] += len(sent_tokenize(d))
+		output['sum_word_length'] += len(nlp(s))
+		output['doc_word_length'] += len(nlp(d))
+	output = {k : v / len(data) for (k,v) in output.items()}
+	return output
 
 
 def load_datasets():
+	N = 20000
 	our_datasets = {'cnndm' : fetch_cnndm, 'nyt' : fetch_nyt , 'newsroom' : fetch_newsroom, 'tldr' : fetch_tldr, 'gigaword' : fetch_gigaword}
 	for dataset_name, fetcher in our_datasets.items():
-		data = fetcher()
+		data = fetcher(pickled = False, N = N)
+		print(len(data))
+		data = data[:N]
 		our_statistics = compute_our_statistics(data, dataset_name)
-		# cmu_version = us2cmu(data)
-		data = []
-		#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
-		#cmu_version = []
-		print(dataset_name, our_statistics)
+	# 	# cmu_version = us2cmu(data)
+	# 	# data = []
+	# 	# cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
+	# 	# cmu_version = []
+	# 	print(compute_distributional_statistics(data))
 
 	# cmu_datasets = fetch_cmu({'ami' : None, 'moviescript' : None, 'peerread' : None, 'pubmed' : None, 'xsum' : None})
 	# for dataset_name, cmu_version in cmu_datasets.items():
 	# 	#cmu_statistics = compute_cmu_statistics(cmu_version, dataset_name)
 	# 	data = cmu2us(cmu_version)
 	# 	cmu_version = []
+	# 	data = data[:N]
+	# 	print(dataset_name)
+	# 	# print(compute_distributional_statistics(data))
 	# 	our_statistics = compute_our_statistics(data, dataset_name)
-	# 	data = []
-	# 	print(dataset_name, our_statistics)
+		# data = []
+		# print(dataset_name, our_statistics)
 
 
 def compute_word_compression(data):
@@ -78,80 +89,6 @@ def compute_word_compression(data):
 def compute_sentence_compression(data):
 	print("Computing Sentence Compression")
 	return 1 - (sum([len(sent_tokenize(ex['summary']))/len(sent_tokenize(ex['text'])) for ex in data]) / len(data))
-
-
-def compute_ts(data, dataset, pickled=False):
-	print("Computing Topic Similarity")
-	k = 80
-	p = 0.2
-	N = 10
-	n = 10000
-	t = math.ceil(p * N)
-
-	print("Parameters: k: {}, p: {}, N: {}, n: {}, t: {}".format(k, p, N, n, t))
-	pickle_f = '{}.n={}.pickle'.format(dataset, n)
-
-	if pickled:
-		document_corpus, id2word_document, summary_corpus, id2word_summary = pickle.load(open(pickle_f, 'rb'))
-	else:
-		stop_words = stopwords.words('english')
-		stop_words.extend(['from', 'subject', 're', 'edu', 'use', '>', '<', '/t', '-lrb-', '-rrb-', '/n', '\n'])
-		data = data[:n]
-
-		document_data = [[str(t).lower() for t in spacy_tokenizer(e['text']) if str(t).lower() not in stop_words] for e in data]
-		document_data = lemmatization(document_data)
-		id2word_document = corpora.Dictionary(document_data)
-		document_corpus = [id2word_document.doc2bow(text) for text in document_data]
-
-		summary_data = [[str(t).lower() for t in spacy_tokenizer(e['summary']) if str(t).lower() not in stop_words] for e in data]
-		summary_data = lemmatization(summary_data)
-		id2word_summary = corpora.Dictionary(summary_data)
-		summary_corpus = [id2word_summary.doc2bow(text) for text in summary_data]
-
-		pickle.dump((document_corpus, id2word_document, summary_corpus, id2word_summary), open(pickle_f, 'wb'))
-
-	N_p_choices = [(N, p) for N in [8, 10] for p in [0.2, 0.35, 0.5]]
-	for k in [160]:# [10, 20, 40, 80, 160]:
-		print("Models being built have {} Topics".format(k))
-		print("Computing Document Topic Model")
-		lda_model_document = gensim.models.ldamodel.LdaModel(corpus=document_corpus,
-		                                           id2word=id2word_document,
-		                                           num_topics=k, 
-		                                           random_state=100,
-		                                           update_every=1,
-		                                           chunksize=100,
-		                                           passes=10,
-		                                           alpha='auto',
-		                                           per_word_topics=True)
-
-		print("Computing Summary Topic Model")
-		lda_model_summary = gensim.models.ldamodel.LdaModel(corpus=summary_corpus,
-		                                           id2word=id2word_summary,
-		                                           num_topics=k, 
-		                                           random_state=100,
-		                                           update_every=1,
-		                                           chunksize=100,
-		                                           passes=10,
-		                                           alpha='auto',
-		                                           per_word_topics=True)
-		
-		pickle.dump((lda_model_document, lda_model_summary), open("k={}.".format(k) + pickle_f, 'wb'))
-
-		for N, p in N_p_choices:
-			t = math.ceil(p * N)
-			numerator = 0
-			denominator = k
-			for i in range(k):
-				top_words_tuples = lda_model_summary.show_topic(i, N)
-				top_words = {w for w, _ in top_words_tuples}
-				for j in range(k):
-					top_words_tuples_document = lda_model_document.show_topic(j, N)
-					top_words_document = {w for w, _ in top_words_tuples_document}
-					if len(top_words & top_words_document) >= t:
-						numerator += 1
-						break	
-			print("Score: {}, N: {}, p: {}, k: {}".format(numerator / denominator, N, p, k))			
-	return numerator / denominator
 
 
 def compute_abs1(data):
@@ -237,15 +174,22 @@ def compute_sc(data):
 
 def compute_our_statistics(data, dataset):
 	print("Computing statistics for:", dataset)
-	word_compression, sentence_compression, topic_similarity, abs1, abs2, red1, red2, redL, semantic_coherence = [None] * 9
+	word_compression, sentence_compression,  abs1, abs2, red1, red2, redL, semantic_coherence = [None] * 8
+	topic_similarity = {(k, input_data) : 0 for k in [10, 25, 50, 100] for input_data in ['document', 'joint']}
+
 	# word_compression = compute_word_compression(data)
 	# sentence_compression = compute_sentence_compression(data)
+	for k, input_data in topic_similarity:
+		if input_data == 'document':
+			topic_similarity[k, input_data] = compute_ts_document(data, dataset, k, pickled_corpus=False, pickled_model=False)
+		elif input_data == 'joint':
+			topic_similarity[k, input_data] = compute_ts_joint(data, dataset, k, pickled_corpus=False, pickled_model=False)
 	# abs1 = compute_abs1(data)
 	# abs2 = compute_abs2(data, dataset)
-	red1, red2, redL = compute_red(data)
-	print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
-	# semantic_coherence = compute_sc(data)
+	# red1, red2, redL = compute_red(data)
 	# print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
+	# semantic_coherence = compute_sc(data)
+	print({"CMP_W" : word_compression, "CMP_S" : sentence_compression, "TS" : topic_similarity, "ABS1" : abs1, "ABS2" : abs2, "RED1" : red1, "RED2" : red2, "REDL" : redL, "SC" : semantic_coherence})
 	# print()
 	# print()
 	# print()
